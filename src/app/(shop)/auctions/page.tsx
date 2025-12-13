@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Search, Filter, ArrowRight } from "lucide-react";
 import AuctionCard from "@/components/auctions/AuctionCard";
 import Link from "next/link";
-import { AUCTION_CONSTANTS } from '@/lib/constants';
+import { AUCTION_CONSTANTS } from "@/lib/constants";
 
 interface Auction {
   id: number;
@@ -32,19 +32,22 @@ export default function AuctionsPage() {
   const [selectedSubCategory, setSelectedSubCategory] = useState("");
 
   const categories = AUCTION_CONSTANTS.CATEGORY_OPTIONS;
-  const selectedCategoryObj = categories.find((c) => c.id === selectedCategory) || null;
+  const selectedCategoryObj =
+    categories.find((c) => c.id === selectedCategory) || null;
 
   useEffect(() => {
     const fetchAuctions = async () => {
       try {
         setLoading(true);
         const params = new URLSearchParams();
-        if (search) params.append('search', search);
-        if (selectedCategory && selectedCategory !== 'all') params.append('category', selectedCategory);
-        if (selectedSubCategory) params.append('subCategory', selectedSubCategory);
+        if (search) params.append("search", search);
+        if (selectedCategory && selectedCategory !== "all")
+          params.append("category", selectedCategory);
+        if (selectedSubCategory)
+          params.append("subCategory", selectedSubCategory);
         const res = await fetch(`/api/auctions?${params.toString()}`);
         const data = await res.json();
-        setAuctions(data.auctions);
+        setAuctions(data?.auctions ?? []);
       } catch (error) {
         console.error("Failed to fetch auctions:", error);
       } finally {
@@ -91,7 +94,10 @@ export default function AuctionsPage() {
 
           {/* Search Bar */}
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            <Search
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+              size={20}
+            />
             <input
               type="text"
               placeholder="Search auctions..."
@@ -112,7 +118,10 @@ export default function AuctionsPage() {
           {categories.map((cat) => (
             <button
               key={cat.id}
-              onClick={() => { setSelectedCategory(cat.id); setSelectedSubCategory(''); }}
+              onClick={() => {
+                setSelectedCategory(cat.id);
+                setSelectedSubCategory("");
+              }}
               className={`px-5 py-2.5 rounded-full whitespace-nowrap text-sm font-bold transition-all duration-300 ${
                 selectedCategory === cat.id
                   ? "glass-button shadow-lg shadow-nepal-accent/50 scale-105"
@@ -125,23 +134,27 @@ export default function AuctionsPage() {
         </motion.div>
 
         {/* Subcategory selector when a category (other than 'all') is chosen */}
-        {selectedCategoryObj && selectedCategoryObj.sub.length > 0 && selectedCategory !== 'all' && (
-          <div className="mb-8">
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-400">Subcategory:</span>
-              <select
-                value={selectedSubCategory}
-                onChange={(e) => setSelectedSubCategory(e.target.value)}
-                className="px-3 py-2 rounded-lg bg-white/5 border border-white/20 text-white"
-              >
-                <option value="">All</option>
-                {selectedCategoryObj.sub.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+        {selectedCategoryObj &&
+          selectedCategoryObj.sub.length > 0 &&
+          selectedCategory !== "all" && (
+            <div className="mb-8">
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-400">Subcategory:</span>
+                <select
+                  value={selectedSubCategory}
+                  onChange={(e) => setSelectedSubCategory(e.target.value)}
+                  className="px-3 py-2 rounded-lg bg-white/5 border border-white/20 text-white"
+                >
+                  <option value="">All</option>
+                  {selectedCategoryObj.sub.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Auctions Grid */}
         {loading ? (
