@@ -76,7 +76,7 @@ export default function AuctionCard({
         className="glass-panel rounded-2xl overflow-hidden group cursor-pointer h-full flex flex-col"
       >
         {/* Image Container */}
-        <div className="relative h-48 w-full overflow-hidden bg-gradient-to-br from-gray-800 to-gray-900">
+        <div className="relative h-48 w-full overflow-hidden bg-linear-to-br from-gray-800 to-gray-900">
           {imageUrl ? (
             <Image
               src={imageUrl}
@@ -85,7 +85,7 @@ export default function AuctionCard({
               className="object-cover group-hover:scale-110 transition-transform duration-300"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-900/20 to-blue-900/20">
+            <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-purple-900/20 to-blue-900/20">
               <Gavel className="w-12 h-12 text-white/30" />
             </div>
           )}

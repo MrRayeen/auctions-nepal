@@ -366,7 +366,7 @@ export default function EditAuctionPage() {
                     className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/10 hover:border-nepal-accent/50 transition-all"
                   >
                     <GripVertical size={18} className="text-gray-500 cursor-grab" />
-                    <div className="relative w-16 h-16 rounded overflow-hidden flex-shrink-0">
+                    <div className="relative w-16 h-16 rounded overflow-hidden shrink-0">
                       <Image
                         src={img.url}
                         alt="Preview"
