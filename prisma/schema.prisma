@@ -1,0 +1,137 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
+  name      String?
+  fullName  String?
+  phone     String?
+  password  String
+  pin       String?   // 4-digit PIN hash for transaction security
+  
+  // KYC Verification Fields
+  kycStatus         String?   @default("NOT_SUBMITTED")  // NOT_SUBMITTED, PENDING, VERIFIED, REJECTED
+  currentAddress    String?
+  permanentAddress  String?
+  citizenshipFront  String?
+  citizenshipBack   String?
+  selfieWithCitizenship String?
+  kycSubmittedAt    DateTime?
+  kycVerifiedAt     DateTime?
+  kycRejectionReason String?
+  
+  bids      Bid[]
+  auctions  Auction[]
+  autoBids  AutoBid[] @relation("AutoBids")
+  favorites Favorite[] @relation("UserFavorites")
+  reports   Report[] @relation("UserReports")
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Auction {
+  id            Int      @id @default(autoincrement())
+  title         String
+  description   String
+  category      String?  // e.g. 'electronics', 'vehicles', 'art', etc.
+  subCategory   String?  // optional more specific grouping
+  slug          String   @unique  // URL-friendly slug generated from title
+  startingPrice Float
+  currentPrice  Float
+  minIncrement  Float    @default(100)  // Minimum bid increment in Rupees
+  startTime     DateTime
+  endTime       DateTime
+  imageUrl      String?  // Keep for backward compatibility
+  tags          String?  // JSON string containing product details
+  status        String   @default("ACTIVE")  // ACTIVE or SOLD
+  seller        User     @relation(fields: [sellerId], references: [id])
+  sellerId      Int
+  bids          Bid[]
+  autoBids      AutoBid[]
+  favorites     Favorite[]
+  reports       Report[]
+  images        AuctionImage[]
+  messages      Message[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model AuctionImage {
+  id        Int      @id @default(autoincrement())
+  url       String
+  order     Int      @default(0)
+  auction   Auction? @relation(fields: [auctionId], references: [id])
+  auctionId Int?
+}
+
+model Message {
+  id         Int      @id @default(autoincrement())
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id])
+  senderId   Int
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  receiverId Int
+  content    String
+  read       Boolean  @default(false)
+  auction    Auction? @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  auctionId  Int?
+  createdAt  DateTime @default(now())
+}
+
+model AutoBid {
+  id        Int      @id @default(autoincrement())
+  auction   Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  auctionId Int
+  bidder    User     @relation("AutoBids", fields: [bidderId], references: [id], onDelete: Cascade)
+  bidderId  Int
+  maxBidAmount Float  // Maximum amount user is willing to bid
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([auctionId, bidderId])
+}
+
+model Favorite {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation("UserFavorites", fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  auction   Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  auctionId Int
+  createdAt DateTime @default(now())
+  @@unique([userId, auctionId])
+}
+
+model Report {
+  id        Int      @id @default(autoincrement())
+  auction   Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  auctionId Int
+  reporter  User     @relation("UserReports", fields: [reporterId], references: [id], onDelete: Cascade)
+  reporterId Int
+  reason    String   // 'FRAUD_SCAM', 'HARMFUL_WEAPON_DRUGS', 'OTHER'
+  description String?
+  status    String   @default("PENDING")  // PENDING, REVIEWED, RESOLVED, DISMISSED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([auctionId, reporterId])
+}
+
+model Bid {
+  id        Int      @id @default(autoincrement())
+  amount    Float
+  createdAt DateTime @default(now())
+  auction   Auction  @relation(fields: [auctionId], references: [id])
+  auctionId Int
+  bidder    User     @relation(fields: [bidderId], references: [id])
+  bidderId  Int
+}

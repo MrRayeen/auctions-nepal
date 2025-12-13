@@ -1,26 +1,222 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ------------------------------------------- */
+/* 1. CSS-FIRST CONFIGURATION (Tailwind V4 @theme) */
+/* This is where we define our custom colors and utilities */
+@theme {
+  /* Define custom color scale for utility classes like bg-nepal-900 */
+  --color-nepal-900: #0f172a; /* Deep Night Blue (Background) */
+  --color-nepal-800: #1e293b; /* Card Background */
+  --color-nepal-accent: #f59e0b; /* Marigold/Amber (Action Buttons) */
+  --color-nepal-muted: #64748b; /* Muted text */
+
+  /* Define the background gradient utility */
+  --bg-liquid-gradient: radial-gradient(
+    circle at 50% 50%,
+    rgba(76, 29, 149, 0.4),
+    rgba(15, 23, 42, 1)
+  );
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* ------------------------------------------- */
+/* 2. BASE STYLES & LAYERS */
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  /* Dark mode (default) */
+  body {
+    /* Reference the custom color variable from @theme */
+    background-color: var(--color-nepal-900);
+    color: white;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+
+    /* The subtle liquid background effect */
+    background-image: radial-gradient(
+        at 0% 0%,
+        rgba(56, 189, 248, 0.15) 0px,
+        transparent 50%
+      ),
+      radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.15) 0px, transparent 50%);
+  }
+
+  /* Light mode */
+  html.light {
+    color-scheme: light;
+  }
+
+  html.light body {
+    background-color: #f8fafc;
+    color: #1e293b;
+    background-image: radial-gradient(
+        at 0% 0%,
+        rgba(56, 189, 248, 0.08) 0px,
+        transparent 50%
+      ),
+      radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.08) 0px, transparent 50%);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ------------------------------------------- */
+/* 3. COMPONENT STYLES (The Glassmorphism) */
+
+@layer components {
+  /* The Core Glass Panel - Dark Mode */
+  .glass-panel {
+    /* Use arbitrary values for `bg-white/10` and `backdrop-blur-xl` for the effect */
+    @apply bg-white/10 backdrop-blur-xl border border-white/20 shadow-xl;
+  }
+
+  /* The Core Glass Panel - Light Mode */
+  html.light .glass-panel {
+    @apply bg-white/40 backdrop-blur-xl border border-black/10 shadow-lg;
+  }
+
+  /* The Glass Button (using the accent color) - Dark Mode */
+  .glass-button {
+    /* Reference the custom color variable directly */
+    background-color: var(--color-nepal-accent);
+    color: black;
+    @apply font-bold transition-all duration-300 rounded-full;
+    box-shadow: 0 0 30px rgba(245, 158, 11, 0.5);
+  }
+
+  .glass-button:hover {
+    /* Slight hover effect */
+    filter: brightness(1.15);
+    @apply shadow-lg;
+    box-shadow: 0 0 40px rgba(245, 158, 11, 0.6);
+  }
+
+  .glass-button:active {
+    @apply scale-95;
+  }
+
+  /* Light mode adjustments for text and interactive elements */
+  html.light a,
+  html.light button {
+    @apply transition-colors duration-200;
+  }
+
+  html.light .text-white {
+    @apply text-slate-900;
+  }
+
+  html.light .text-gray-400 {
+    @apply text-gray-600;
+  }
+
+  html.light .text-gray-500 {
+    @apply text-gray-700;
+  }
+
+  html.light .border-white\/10 {
+    @apply border-black/10;
+  }
+
+  html.light .border-white\/20 {
+    @apply border-black/15;
+  }
+
+  html.light .bg-nepal-900 {
+    @apply bg-white;
+  }
+
+  html.light .bg-nepal-900\/80 {
+    @apply bg-white/80;
+  }
+
+  html.light .bg-nepal-900\/40 {
+    @apply bg-white/40;
+  }
+
+  html.light .bg-white\/5 {
+    @apply bg-black/5;
+  }
+
+  html.light .bg-white\/10 {
+    @apply bg-black/10;
+  }
+
+  /* Hover mappings for classes that toggle to white in dark mode */
+  html.light .hover\:text-white:hover {
+    @apply text-slate-900;
+  }
+
+  html.light .placeholder-gray-500 {
+    @apply placeholder-gray-600;
+  }
+  html.light .bg-white\/20 {
+    @apply bg-black/20;
+  }
+
+  html.light .bg-white\/30 {
+    @apply bg-black/30;
+  }
+
+  html.light .placeholder-gray-400 {
+    @apply placeholder-gray-600;
+  }
+
+  html.light .hover\:bg-white\/20:hover {
+    @apply hover:bg-black/10;
+  }
+
+  html.light .hover\:bg-white\/10:hover {
+    @apply hover:bg-black/5;
+  }
+
+  html.light .hover\:bg-white\/30:hover {
+    @apply hover:bg-black/15;
+  }
+
+  /* Additional light-mode fixes: ensure `prose-invert` and common muted text classes
+     render correctly when `html.light` is active. This prevents leftover white text
+     from dark-mode styles when users switch to light mode. */
+  html.light .prose-invert {
+    @apply text-slate-900;
+  }
+
+  html.light .prose-invert h1,
+  html.light .prose-invert h2,
+  html.light .prose-invert h3,
+  html.light .prose-invert h4,
+  html.light .prose-invert h5,
+  html.light .prose-invert h6,
+  html.light .prose-invert p,
+  html.light .prose-invert li,
+  html.light .prose-invert strong,
+  html.light .prose-invert em {
+    @apply text-slate-900;
+  }
+
+  html.light .prose-invert a {
+    @apply text-nepal-accent;
+  }
+
+  html.light .prose-invert blockquote {
+    @apply border-l-4 border-slate-200 bg-slate-50 text-slate-700;
+  }
+
+  html.light .prose-invert code {
+    @apply text-slate-800 bg-black/5;
+  }
+
+  html.light .prose-invert pre {
+    @apply bg-white/80 text-slate-900;
+  }
+
+  /* Additional muted text mappings used across components */
+  html.light .text-gray-300 {
+    @apply text-gray-600;
+  }
+
+  html.light .text-gray-200 {
+    @apply text-gray-500;
+  }
+
+  /* Map bg-white/40 used by some components to a subtle light-mode background */
+  html.light .bg-white\/40 {
+    @apply bg-black/5;
+  }
 }
+
