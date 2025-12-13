@@ -4,10 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npx prisma migrate deploy && next build",
     "start": "next start",
     "postinstall": "prisma generate",
-    "seed": "node scripts/seed.js"
+    "migrate:deploy": "prisma migrate deploy"
   },
   "dependencies": {
     "@auth/core": "^0.41.0",
