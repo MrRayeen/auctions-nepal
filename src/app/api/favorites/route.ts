@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
     });
 
     // Extract auction data directly from favorites for profile page
-    const favoritesData = favorites.map(fav => fav.auction);
+    const favoritesData = favorites.map((fav: { auction: any; }) => fav.auction);
     return NextResponse.json({ favorites: favoritesData });
   } catch (error) {
     console.error('Error fetching favorites:', error);

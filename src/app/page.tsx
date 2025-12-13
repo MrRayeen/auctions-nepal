@@ -26,7 +26,8 @@ async function getFeaturedAuctions() {
     const data = await res.json();
     return data.auctions || [];
   } catch (error) {
-    console.error("Failed to fetch featured auctions:", error);
+    // Silently fail during build - DB might not be running
+    // This is expected behavior during static generation
     return [];
   }
 }

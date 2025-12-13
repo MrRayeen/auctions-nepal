@@ -1,4 +1,5 @@
 import prisma from '../src/lib/db';
+import { generateSlug, ensureUniqueSlug } from '../src/lib/slug';
 
 async function main() {
   console.log('Seeding database...');
@@ -36,9 +37,12 @@ async function main() {
 
   // Create test auctions
   const now = new Date();
+  const title1 = 'Royal Enfield Classic 350 (2022)';
+  const slug1 = await ensureUniqueSlug(generateSlug(title1), prisma);
   const auction1 = await prisma.auction.create({
     data: {
-      title: 'Royal Enfield Classic 350 (2022)',
+      title: title1,
+      slug: slug1,
       description: 'Barely used, single hand driven. Modified exhaust and premium leather seats. Located in Lalitpur.',
       startingPrice: 250000,
       currentPrice: 345000,
@@ -49,9 +53,12 @@ async function main() {
     },
   });
 
+  const title2 = 'MacBook Pro M3 Max';
+  const slug2 = await ensureUniqueSlug(generateSlug(title2), prisma);
   const auction2 = await prisma.auction.create({
     data: {
-      title: 'MacBook Pro M3 Max',
+      title: title2,
+      slug: slug2,
       description: 'Like new condition, 16GB RAM, 512GB SSD. Includes original box and charger.',
       startingPrice: 200000,
       currentPrice: 245000,
@@ -62,9 +69,12 @@ async function main() {
     },
   });
 
+  const title3 = 'iPhone 15 Pro Max';
+  const slug3 = await ensureUniqueSlug(generateSlug(title3), prisma);
   const auction3 = await prisma.auction.create({
     data: {
-      title: 'iPhone 15 Pro Max',
+      title: title3,
+      slug: slug3,
       description: 'Black color, 256GB. Mint condition with all accessories.',
       startingPrice: 120000,
       currentPrice: 156000,
@@ -75,9 +85,12 @@ async function main() {
     },
   });
 
+  const title4 = 'Vintage Rolex Watch';
+  const slug4 = await ensureUniqueSlug(generateSlug(title4), prisma);
   const auction4 = await prisma.auction.create({
     data: {
-      title: 'Vintage Rolex Watch',
+      title: title4,
+      slug: slug4,
       description: 'Authentic 1960s Rolex Submariner. Fully serviced and authenticated.',
       startingPrice: 80000,
       currentPrice: 118000,
@@ -88,9 +101,12 @@ async function main() {
     },
   });
 
+  const title5 = 'Sony PlayStation 5';
+  const slug5 = await ensureUniqueSlug(generateSlug(title5), prisma);
   const auction5 = await prisma.auction.create({
     data: {
-      title: 'Sony PlayStation 5',
+      title: title5,
+      slug: slug5,
       description: 'Complete bundle with 2 controllers, 3 games, and all cables.',
       startingPrice: 50000,
       currentPrice: 72000,
