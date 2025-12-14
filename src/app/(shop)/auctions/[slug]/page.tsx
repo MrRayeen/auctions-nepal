@@ -255,7 +255,7 @@ export default function AuctionDetailPage() {
     }
 
     // Navigate to chat page with seller
-    router.push(`/chat?sellerId=${auction.seller.id}&auctionId=${auction.id}`);
+    router.push(`/chat?userId=${auction.seller.id}&auctionId=${auction.id}`);
   };
 
   const handlePlaceBid = async () => {

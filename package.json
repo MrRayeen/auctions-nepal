@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "tsx server.ts",
+    "dev:next": "next dev",
     "build": "next build",
-    "start": "npx prisma migrate deploy && next start",
+    "start": "npx prisma migrate deploy && tsx server.ts",
     "postinstall": "prisma generate",
     "migrate:deploy": "prisma migrate deploy"
   },
@@ -26,6 +27,8 @@
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-leaflet": "^5.0.0",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
@@ -36,6 +39,7 @@
     "@types/react-dom": "^19",
     "prisma": "^5.20.0",
     "tailwindcss": "^4",
+    "tsx": "^4.7.0",
     "typescript": "^5"
   }
 }
