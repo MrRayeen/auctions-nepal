@@ -281,40 +281,22 @@ export default function AdminKYCPage() {
                       {[
                         {
                           label: "Citizenship Front",
-                          url: submission.citizenshipFront,
+                          publicId: submission.citizenshipFront,
                         },
                         {
                           label: "Citizenship Back",
-                          url: submission.citizenshipBack,
+                          publicId: submission.citizenshipBack,
                         },
                         {
                           label: "Selfie with Citizenship",
-                          url: submission.selfieWithCitizenship,
+                          publicId: submission.selfieWithCitizenship,
                         },
                       ].map((doc) => (
-                        <div key={doc.label}>
-                          <p className="text-sm font-semibold text-gray-700 mb-2">
-                            {doc.label}
-                          </p>
-                          {doc.url ? (
-                            <a
-                              href={doc.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block border-2 border-nepal-accent rounded-lg overflow-hidden hover:opacity-75 transition"
-                            >
-                              <img
-                                src={doc.url}
-                                alt={doc.label}
-                                className="w-full h-48 object-cover"
-                              />
-                            </a>
-                          ) : (
-                            <div className="w-full h-48 bg-gray-300 rounded-lg flex items-center justify-center text-gray-600">
-                              No image
-                            </div>
-                          )}
-                        </div>
+                        <DocumentImage
+                          key={doc.label}
+                          label={doc.label}
+                          publicId={doc.publicId}
+                        />
                       ))}
                     </div>
 
@@ -381,6 +363,56 @@ export default function AdminKYCPage() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * DocumentImage Component
+ * Displays KYC documents directly from Cloudinary secure URLs.
+ */
+interface DocumentImageProps {
+  label: string;
+  publicId: string; // Now contains the direct Cloudinary URL
+}
+
+function DocumentImage({ label, publicId }: DocumentImageProps) {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (!publicId || publicId.trim() === '') {
+      console.warn(`No URL for document: ${label}`);
+      setError(true);
+      return;
+    }
+
+    // publicId is now actually a direct URL
+    setImageUrl(publicId);
+    setError(false);
+  }, [publicId, label]);
+
+  return (
+    <div>
+      <p className="text-sm font-semibold text-gray-700 mb-2">{label}</p>
+      {error || !imageUrl ? (
+        <div className="w-full h-48 bg-gray-300 rounded-lg flex items-center justify-center text-gray-600">
+          No image available
+        </div>
+      ) : (
+        <a
+          href={imageUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block border-2 border-nepal-accent rounded-lg overflow-hidden hover:opacity-75 transition"
+        >
+          <img
+            src={imageUrl}
+            alt={label}
+            className="w-full h-48 object-cover"
+          />
+        </a>
+      )}
     </div>
   );
 }

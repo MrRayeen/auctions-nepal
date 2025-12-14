@@ -106,6 +106,11 @@ export async function POST(request: Request) {
       images,
       category,
       subCategory,
+      locationLat,
+      locationLng,
+      locationArea,
+      locationCity,
+      delivery,
     } = body;
 
     const baseSlug = generateSlug(title);
@@ -126,6 +131,11 @@ export async function POST(request: Request) {
         imageUrl,
         tags: tags || null,
         sellerId,
+        locationLat: locationLat || null,
+        locationLng: locationLng || null,
+        locationArea: locationArea || null,
+        locationCity: locationCity || null,
+        delivery: delivery || "Not Available",
         images: images?.length
           ? {
               create: images.map((img: any, index: number) => ({

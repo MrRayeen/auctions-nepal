@@ -534,14 +534,14 @@ export default function ProfilePage() {
                 >
                   <div
                     className="flex-1 flex sm:block flex-col cursor-pointer items-center justify-center hover:opacity-80 transition-opacity"
-                    onClick={() => router.push(`/auctions/${item.id}`)}
+                    onClick={() => router.push(`/auctions/${item.slug || item.id}`)}
                   >
                     <h3 className="text-lg font-bold text-white mb-1">{item.title}</h3>
                     <p className="text-sm text-gray-400">{item.bids.length} bids received</p>
                   </div>
                   <div
                     className="text-right cursor-pointer hover:opacity-80 transition-opacity mx-6"
-                    onClick={() => router.push(`/auctions/${item.id}`)}
+                    onClick={() => router.push(`/auctions/${item.slug || item.id}`)}
                   >
                     <p className="text-2xl font-bold text-nepal-accent">
                       Rs. {item.currentPrice.toLocaleString("en-IN")}
@@ -592,9 +592,14 @@ export default function ProfilePage() {
                             )
                           );
                           addToast(
-                            `Listing marked as ${e.target.value === "SOLD" ? "sold" : "active"}`,
+                            `Listing marked as ${e.target.value === "SOLVED" ? "sold" : "active"}`,
                             "success"
                           );
+                          
+                          // Auto-refresh the page after a short delay
+                          setTimeout(() => {
+                            window.location.reload();
+                          }, 1000);
                         } catch (err) {
                           console.error("Status update error:", err);
                           addToast("Failed to update status", "error");

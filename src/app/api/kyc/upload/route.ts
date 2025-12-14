@@ -1,67 +1,85 @@
-import { NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
+import { NextResponse } from "next/server";
+import { v2 as cloudinary } from "cloudinary";
+import type { UploadApiResponse, UploadApiErrorResponse } from "cloudinary";
 
-const UPLOAD_DIR = join(process.cwd(), 'public', 'uploads', 'kyc');
+// Configure Cloudinary (Keys must be in .env file)
+cloudinary.config({
+  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
-    const file = formData.get('file') as File;
+    const file = formData.get("file") as File;
 
     if (!file) {
-      return NextResponse.json(
-        { error: 'No file provided' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
     // Validate file type
-    if (!file.type.startsWith('image/')) {
+    if (!file.type.startsWith("image/")) {
       return NextResponse.json(
-        { error: 'Only image files are allowed' },
+        { error: "Only image files are allowed" },
         { status: 400 }
       );
     }
 
-    // Ensure upload directory exists
-    if (!existsSync(UPLOAD_DIR)) {
-      await mkdir(UPLOAD_DIR, { recursive: true });
-    }
-
+    // --- Cloudinary Upload Logic ---
     try {
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
 
-      // Generate unique filename
-      const timestamp = Date.now();
-      const random = Math.random().toString(36).substring(7);
-      const filename = `${timestamp}-${random}.webp`;
-      const filepath = join(UPLOAD_DIR, filename);
+      // Upload to Cloudinary using a stream with proper types
+      const result = await new Promise<UploadApiResponse>((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: "kyc", // Dedicated folder for KYC documents
+            resource_type: "image",
+            // No type restriction - images are public but admin access is controlled via API auth
+            tags: ["kyc_document"], // Useful for organization
+          },
+          (
+            error: UploadApiErrorResponse | undefined,
+            result: UploadApiResponse | undefined
+          ) => {
+            if (error) {
+              reject(error);
+            } else if (result) {
+              resolve(result);
+            } else {
+              reject(new Error("Unknown upload error"));
+            }
+          }
+        );
 
-      // Save file
-      await writeFile(filepath, buffer);
+        // Write buffer to stream
+        uploadStream.end(buffer);
+      });
 
       return NextResponse.json(
         {
-          url: `/uploads/kyc/${filename}`,
-          filename,
-          size: file.size,
+          // Return direct secure URL for public image
+          publicId: result.public_id,
+          url: result.secure_url, // Direct public URL
+          filename: result.public_id,
+          size: result.bytes,
         },
         { status: 201 }
       );
     } catch (error) {
-      console.error(`Error uploading file ${file.name}:`, error);
+      console.error(`Error uploading KYC file:`, error);
       return NextResponse.json(
-        { error: 'Failed to upload file' },
+        { error: "Failed to upload KYC file" },
         { status: 500 }
       );
     }
+    // -------------------------------
   } catch (error) {
-    console.error('Upload error:', error);
+    console.error("Upload error:", error);
     return NextResponse.json(
-      { error: 'Failed to upload file' },
+      { error: "Failed to process upload request" },
       { status: 500 }
     );
   }

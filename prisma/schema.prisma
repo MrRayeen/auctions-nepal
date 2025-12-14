@@ -56,6 +56,13 @@ model Auction {
   imageUrl      String?  // Keep for backward compatibility
   tags          String?  // JSON string containing product details
   status        String   @default("ACTIVE")  // ACTIVE or SOLD
+  // Location fields
+  locationLat   Float?
+  locationLng   Float?
+  locationArea  String?  // Area/neighborhood name from reverse geocoding
+  locationCity  String?  // City name from reverse geocoding
+  // Delivery field
+  delivery      String?  @default("Not Available")  // 'Not Available', 'Only in my City', 'Paid Delivery'
   seller        User     @relation(fields: [sellerId], references: [id])
   sellerId      Int
   bids          Bid[]
@@ -64,6 +71,7 @@ model Auction {
   reports       Report[]
   images        AuctionImage[]
   messages      Message[]
+  views         AuctionView[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -134,4 +142,15 @@ model Bid {
   auctionId Int
   bidder    User     @relation(fields: [bidderId], references: [id])
   bidderId  Int
+}
+
+model AuctionView {
+  id        Int      @id @default(autoincrement())
+  auction   Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  auctionId Int
+  userId    Int?     // Optional: user ID if logged in
+  ipAddress String?  // IP address for anonymous users
+  viewedAt  DateTime @default(now())
+  @@unique([auctionId, userId]) // Unique constraint to prevent duplicate views from same user
+  @@unique([auctionId, ipAddress]) // Unique constraint for anonymous users
 }

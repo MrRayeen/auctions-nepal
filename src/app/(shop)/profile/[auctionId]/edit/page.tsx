@@ -2,24 +2,33 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Upload, Trash2, GripVertical, Plus } from "lucide-react";
+import { ArrowLeft, Upload, Trash2, GripVertical, Plus, X } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
+import { AUCTION_CONSTANTS } from "@/lib/constants";
 
 interface Auction {
   id: number;
   title: string;
   description: string;
+  category?: string;
+  subCategory?: string;
   startingPrice: number;
   currentPrice: number;
   minIncrement: number;
   endTime: string;
   tags?: string;
+  delivery?: string;
   images?: Array<{ id: number; url: string; order: number }>;
   bids: Array<{ id: number }>;
   status: string;
+}
+
+interface Tag {
+  key: string;
+  value: string;
 }
 
 interface ImageFile {
@@ -42,12 +51,17 @@ export default function EditAuctionPage() {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
+    category: "",
+    subCategory: "",
     startingPrice: 0,
     minIncrement: 0,
     endTime: "",
-    tags: "",
+    delivery: "Not Available",
     status: "ACTIVE",
   });
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [newTagKey, setNewTagKey] = useState("");
+  const [newTagValue, setNewTagValue] = useState("");
   const [images, setImages] = useState<ImageFile[]>([]);
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
 
@@ -62,12 +76,32 @@ export default function EditAuctionPage() {
         setFormData({
           title: data.title,
           description: data.description,
+          category: data.category || "",
+          subCategory: data.subCategory || "",
           startingPrice: data.startingPrice,
           minIncrement: data.minIncrement,
           endTime: new Date(data.endTime).toISOString().slice(0, 16),
-          tags: data.tags || "",
+          delivery: data.delivery || "Not Available",
           status: data.status || "ACTIVE",
         });
+        
+        // Parse tags
+        if (data.tags) {
+          try {
+            const parsed = JSON.parse(data.tags);
+            if (Array.isArray(parsed)) {
+              setTags(parsed);
+            } else {
+              const tagsArray = Object.entries(parsed).map(([key, value]) => ({
+                key,
+                value: String(value),
+              }));
+              setTags(tagsArray);
+            }
+          } catch (e) {
+            setTags([]);
+          }
+        }
         setImages(
           data.images?.map((img: any) => ({
             id: img.id,
@@ -153,8 +187,16 @@ export default function EditAuctionPage() {
       }
 
       // Update auction
+      const tagsObject = tags.reduce((acc, tag) => {
+        if (tag.key && tag.value) {
+          acc[tag.key] = tag.value;
+        }
+        return acc;
+      }, {} as Record<string, string>);
+
       const updateData = {
         ...formData,
+        tags: JSON.stringify(tagsObject),
         endTime: new Date(formData.endTime).toISOString(),
       };
 
@@ -200,6 +242,20 @@ export default function EditAuctionPage() {
   }
 
   const canEditPrice = auction.bids.length === 0;
+  const categories = AUCTION_CONSTANTS.CATEGORY_OPTIONS;
+  const selectedCategoryObj = categories.find((c) => c.id === formData.category) || null;
+
+  const addTag = () => {
+    if (newTagKey && newTagValue) {
+      setTags([...tags, { key: newTagKey, value: newTagValue }]);
+      setNewTagKey("");
+      setNewTagValue("");
+    }
+  };
+
+  const removeTag = (index: number) => {
+    setTags(tags.filter((_, i) => i !== index));
+  };
 
   return (
     <main className="min-h-screen pb-16 pt-24 relative overflow-x-hidden">
@@ -249,17 +305,115 @@ export default function EditAuctionPage() {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Tags</label>
-              <input
-                type="text"
-                value={formData.tags}
-                onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                placeholder="Comma-separated tags"
-                className="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:border-nepal-accent"
-              />
+            {/* Category and Subcategory */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Category</label>
+                <select
+                  value={formData.category}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      category: e.target.value,
+                      subCategory: "",
+                    }))
+                  }
+                  className="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:border-nepal-accent"
+                >
+                  <option value="">Select category</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Subcategory</label>
+                <select
+                  value={formData.subCategory}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, subCategory: e.target.value }))}
+                  disabled={!selectedCategoryObj || selectedCategoryObj.sub.length === 0}
+                  className="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:border-nepal-accent disabled:opacity-50"
+                >
+                  <option value="">Select subcategory</option>
+                  {selectedCategoryObj?.sub.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-          </div>
+
+            {/* Delivery Option */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Delivery Option</label>
+              <select
+                value={formData.delivery}
+                onChange={(e) => setFormData((prev) => ({ ...prev, delivery: e.target.value }))}
+                className="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:border-nepal-accent"
+              >
+                <option value="Not Available">Not Available</option>
+                <option value="Only in my City">Only in my City</option>
+                <option value="Paid Delivery">Paid Delivery</option>
+              </select>
+            </div>
+
+            {/* Tags */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Product Tags</label>
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newTagKey}
+                    onChange={(e) => setNewTagKey(e.target.value)}
+                    placeholder="Tag name (e.g., Condition)"
+                    className="flex-1 px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:border-nepal-accent"
+                  />
+                  <input
+                    type="text"
+                    value={newTagValue}
+                    onChange={(e) => setNewTagValue(e.target.value)}
+                    placeholder="Tag value (e.g., New)"
+                    className="flex-1 px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:border-nepal-accent"
+                  />
+                  <button
+                    onClick={addTag}
+                    type="button"
+                    className="glass-button px-4 py-2 rounded-lg font-bold flex items-center gap-1"
+                  >
+                    <Plus size={16} /> Add
+                  </button>
+                </div>
+                {tags.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {tags.map((tag, idx) => (
+                      <motion.div
+                        key={idx}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="glass-panel p-3 rounded-lg border border-white/10 flex items-center justify-between"
+                      >
+                        <div className="text-sm">
+                          <p className="text-gray-400 text-xs uppercase">{tag.key}</p>
+                          <p className="text-white font-semibold">{tag.value}</p>
+                        </div>
+                        <button
+                          onClick={() => removeTag(idx)}
+                          type="button"
+                          className="p-1 hover:bg-red-500/20 rounded transition-colors"
+                        >
+                          <X size={16} className="text-red-400" />
+                        </button>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            </div>
 
           {/* Pricing Section */}
           <div className="space-y-4">

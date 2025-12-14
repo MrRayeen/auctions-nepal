@@ -16,6 +16,8 @@ interface Auction {
   currentPrice: number;
   startingPrice: number;
   endTime: string;
+  locationArea?: string;
+  locationCity?: string;
   seller: {
     id: number;
     name?: string;
@@ -193,6 +195,8 @@ export default function AuctionsPage() {
                   endTime={auction.endTime}
                   seller={auction.seller}
                   bidsCount={auction.bids.length}
+                  locationArea={auction.locationArea}
+                  locationCity={auction.locationCity}
                 />
               </motion.div>
             ))}

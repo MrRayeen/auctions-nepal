@@ -20,6 +20,18 @@ interface KYCData {
   kycRejectionReason: string | null;
 }
 
+// Interface for file objects before upload
+interface FileStorage {
+  [key: string]: File | null;
+}
+
+// Interface for uploaded file responses
+interface UploadedFile {
+  publicId: string;
+  filename: string;
+  size: number;
+}
+
 export default function KYCForm({ userId, onComplete }: KYCFormProps) {
   const { addToast } = useToast();
   const [kycData, setKycData] = useState<KYCData>({
@@ -34,10 +46,12 @@ export default function KYCForm({ userId, onComplete }: KYCFormProps) {
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [uploading, setUploading] = useState<{ [key: string]: boolean }>({
-    citizenshipFront: false,
-    citizenshipBack: false,
-    selfieWithCitizenship: false,
+  
+  // Store selected files locally (not uploaded yet)
+  const [selectedFiles, setSelectedFiles] = useState<FileStorage>({
+    citizenshipFront: null,
+    citizenshipBack: null,
+    selfieWithCitizenship: null,
   });
 
   useEffect(() => {
@@ -78,33 +92,19 @@ export default function KYCForm({ userId, onComplete }: KYCFormProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploading((prev) => ({ ...prev, [fieldName]: true }));
-
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const res = await fetch('/api/kyc/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!res.ok) {
-        throw new Error('Upload failed');
-      }
-
-      const { url } = await res.json();
-      setKycData((prev) => ({
-        ...prev,
-        [fieldName]: url,
-      }));
-      addToast('Image uploaded successfully', 'success');
-    } catch (err) {
-      console.error('Upload error:', err);
-      addToast('Failed to upload image', 'error');
-    } finally {
-      setUploading((prev) => ({ ...prev, [fieldName]: false }));
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      addToast('Please select a valid image file', 'error');
+      return;
     }
+
+    // Store file locally (will be uploaded on form submit)
+    setSelectedFiles((prev) => ({
+      ...prev,
+      [fieldName]: file,
+    }));
+
+    addToast('Image selected. Will be uploaded when you submit KYC.', 'success');
   };
 
   const handleSubmit = async () => {
@@ -117,21 +117,44 @@ export default function KYCForm({ userId, onComplete }: KYCFormProps) {
       addToast('Please enter your permanent address', 'error');
       return;
     }
-    if (!kycData.citizenshipFront) {
-      addToast('Please upload citizenship front image', 'error');
+    if (!selectedFiles.citizenshipFront) {
+      addToast('Please select citizenship front image', 'error');
       return;
     }
-    if (!kycData.citizenshipBack) {
-      addToast('Please upload citizenship back image', 'error');
+    if (!selectedFiles.citizenshipBack) {
+      addToast('Please select citizenship back image', 'error');
       return;
     }
-    if (!kycData.selfieWithCitizenship) {
-      addToast('Please upload selfie with citizenship', 'error');
+    if (!selectedFiles.selfieWithCitizenship) {
+      addToast('Please select selfie with citizenship', 'error');
       return;
     }
 
     setSubmitting(true);
     try {
+      // Upload all three files to Cloudinary
+      const uploadPromises = [
+        uploadFile(selectedFiles.citizenshipFront!, 'citizenshipFront'),
+        uploadFile(selectedFiles.citizenshipBack!, 'citizenshipBack'),
+        uploadFile(selectedFiles.selfieWithCitizenship!, 'selfieWithCitizenship'),
+      ];
+
+      const uploadResults = await Promise.all(uploadPromises);
+
+      if (uploadResults.some(result => !result)) {
+        throw new Error('One or more files failed to upload');
+      }
+
+      // Prepare KYC submission data with uploaded publicIds
+      const submissionData = {
+        currentAddress: kycData.currentAddress,
+        permanentAddress: kycData.permanentAddress,
+        citizenshipFront: uploadResults[0],
+        citizenshipBack: uploadResults[1],
+        selfieWithCitizenship: uploadResults[2],
+      };
+
+      // Submit KYC with uploaded publicIds
       const token = localStorage.getItem('authToken');
       const res = await fetch('/api/kyc', {
         method: 'POST',
@@ -139,13 +162,7 @@ export default function KYCForm({ userId, onComplete }: KYCFormProps) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          currentAddress: kycData.currentAddress,
-          permanentAddress: kycData.permanentAddress,
-          citizenshipFront: kycData.citizenshipFront,
-          citizenshipBack: kycData.citizenshipBack,
-          selfieWithCitizenship: kycData.selfieWithCitizenship,
-        }),
+        body: JSON.stringify(submissionData),
       });
 
       if (!res.ok) {
@@ -156,14 +173,56 @@ export default function KYCForm({ userId, onComplete }: KYCFormProps) {
       setKycData((prev) => ({
         ...prev,
         kycStatus: result.user.kycStatus,
+        citizenshipFront: uploadResults[0] || '',
+        citizenshipBack: uploadResults[1] || '',
+        selfieWithCitizenship: uploadResults[2] || '',
       }));
+
+      // Reset selected files
+      setSelectedFiles({
+        citizenshipFront: null,
+        citizenshipBack: null,
+        selfieWithCitizenship: null,
+      });
+
       addToast('KYC submitted successfully. Awaiting admin verification.', 'success');
       onComplete?.();
     } catch (err) {
       console.error('Submit error:', err);
-      addToast('Failed to submit KYC', 'error');
+      addToast('Failed to submit KYC. Please try again.', 'error');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  /**
+   * Upload a single file to Cloudinary and return its URL
+   */
+  const uploadFile = async (
+    file: File,
+    fieldName: string
+  ): Promise<string | null> => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/kyc/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        console.error(`Upload failed for ${fieldName}:`, res.status);
+        addToast(`Failed to upload ${fieldName}`, 'error');
+        return null;
+      }
+
+      const { url } = await res.json();
+      return url;
+    } catch (err) {
+      console.error(`Upload error for ${fieldName}:`, err);
+      addToast(`Failed to upload ${fieldName}`, 'error');
+      return null;
     }
   };
 
@@ -278,16 +337,19 @@ export default function KYCForm({ userId, onComplete }: KYCFormProps) {
                 Citizenship Front
               </label>
               <div className="relative">
-                {kycData.citizenshipFront ? (
+                {selectedFiles.citizenshipFront ? (
                   <div className="relative group">
                     <img
-                      src={kycData.citizenshipFront}
-                      alt="Citizenship Front"
-                      className="w-full h-48 object-cover rounded-lg border-2 border-nepal-accent"
+                      src={URL.createObjectURL(selectedFiles.citizenshipFront)}
+                      alt="Citizenship Front Preview"
+                      className="w-full h-48 object-cover rounded-lg border-2 border-green-500"
                     />
+                    <div className="absolute top-2 left-2 bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded">
+                      Selected
+                    </div>
                     <button
                       onClick={() =>
-                        setKycData((prev) => ({ ...prev, citizenshipFront: '' }))
+                        setSelectedFiles((prev) => ({ ...prev, citizenshipFront: null }))
                       }
                       disabled={isPending}
                       className="absolute top-2 right-2 p-2 bg-red-500 rounded-full opacity-0 group-hover:opacity-100 transition disabled:opacity-50"
@@ -302,17 +364,11 @@ export default function KYCForm({ userId, onComplete }: KYCFormProps) {
                       accept="image/*"
                       onChange={(e) => handleImageUpload(e, 'citizenshipFront')}
                       className="hidden"
-                      disabled={isPending || uploading.citizenshipFront}
+                      disabled={isPending}
                     />
                     <div className="h-full flex flex-col items-center justify-center">
-                      {uploading.citizenshipFront ? (
-                        <Loader className="w-8 h-8 animate-spin text-nepal-accent mb-2" />
-                      ) : (
-                        <>
-                          <Upload className="w-8 h-8 text-nepal-accent mb-2" />
-                          <p className="text-sm text-gray-400">Click to upload</p>
-                        </>
-                      )}
+                      <Upload className="w-8 h-8 text-nepal-accent mb-2" />
+                      <p className="text-sm text-gray-400">Click to select</p>
                     </div>
                   </label>
                 )}
@@ -325,16 +381,19 @@ export default function KYCForm({ userId, onComplete }: KYCFormProps) {
                 Citizenship Back
               </label>
               <div className="relative">
-                {kycData.citizenshipBack ? (
+                {selectedFiles.citizenshipBack ? (
                   <div className="relative group">
                     <img
-                      src={kycData.citizenshipBack}
-                      alt="Citizenship Back"
-                      className="w-full h-48 object-cover rounded-lg border-2 border-nepal-accent"
+                      src={URL.createObjectURL(selectedFiles.citizenshipBack)}
+                      alt="Citizenship Back Preview"
+                      className="w-full h-48 object-cover rounded-lg border-2 border-green-500"
                     />
+                    <div className="absolute top-2 left-2 bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded">
+                      Selected
+                    </div>
                     <button
                       onClick={() =>
-                        setKycData((prev) => ({ ...prev, citizenshipBack: '' }))
+                        setSelectedFiles((prev) => ({ ...prev, citizenshipBack: null }))
                       }
                       disabled={isPending}
                       className="absolute top-2 right-2 p-2 bg-red-500 rounded-full opacity-0 group-hover:opacity-100 transition disabled:opacity-50"
@@ -349,17 +408,11 @@ export default function KYCForm({ userId, onComplete }: KYCFormProps) {
                       accept="image/*"
                       onChange={(e) => handleImageUpload(e, 'citizenshipBack')}
                       className="hidden"
-                      disabled={isPending || uploading.citizenshipBack}
+                      disabled={isPending}
                     />
                     <div className="h-full flex flex-col items-center justify-center">
-                      {uploading.citizenshipBack ? (
-                        <Loader className="w-8 h-8 animate-spin text-nepal-accent mb-2" />
-                      ) : (
-                        <>
-                          <Upload className="w-8 h-8 text-nepal-accent mb-2" />
-                          <p className="text-sm text-gray-400">Click to upload</p>
-                        </>
-                      )}
+                      <Upload className="w-8 h-8 text-nepal-accent mb-2" />
+                      <p className="text-sm text-gray-400">Click to select</p>
                     </div>
                   </label>
                 )}
@@ -373,16 +426,19 @@ export default function KYCForm({ userId, onComplete }: KYCFormProps) {
               Selfie with Citizenship
             </label>
             <div className="relative">
-              {kycData.selfieWithCitizenship ? (
+              {selectedFiles.selfieWithCitizenship ? (
                 <div className="relative group">
                   <img
-                    src={kycData.selfieWithCitizenship}
-                    alt="Selfie with Citizenship"
-                    className="w-full h-48 object-cover rounded-lg border-2 border-nepal-accent"
+                    src={URL.createObjectURL(selectedFiles.selfieWithCitizenship)}
+                    alt="Selfie with Citizenship Preview"
+                    className="w-full h-48 object-cover rounded-lg border-2 border-green-500"
                   />
+                  <div className="absolute top-2 left-2 bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded">
+                    Selected
+                  </div>
                   <button
                     onClick={() =>
-                      setKycData((prev) => ({ ...prev, selfieWithCitizenship: '' }))
+                      setSelectedFiles((prev) => ({ ...prev, selfieWithCitizenship: null }))
                     }
                     disabled={isPending}
                     className="absolute top-2 right-2 p-2 bg-red-500 rounded-full opacity-0 group-hover:opacity-100 transition disabled:opacity-50"
@@ -397,17 +453,11 @@ export default function KYCForm({ userId, onComplete }: KYCFormProps) {
                     accept="image/*"
                     onChange={(e) => handleImageUpload(e, 'selfieWithCitizenship')}
                     className="hidden"
-                    disabled={isPending || uploading.selfieWithCitizenship}
+                    disabled={isPending}
                   />
                   <div className="h-full flex flex-col items-center justify-center">
-                    {uploading.selfieWithCitizenship ? (
-                      <Loader className="w-8 h-8 animate-spin text-nepal-accent mb-2" />
-                    ) : (
-                      <>
-                        <Upload className="w-8 h-8 text-nepal-accent mb-2" />
-                        <p className="text-sm text-gray-400">Click to upload</p>
-                      </>
-                    )}
+                    <Upload className="w-8 h-8 text-nepal-accent mb-2" />
+                    <p className="text-sm text-gray-400">Click to select</p>
                   </div>
                 </label>
               )}

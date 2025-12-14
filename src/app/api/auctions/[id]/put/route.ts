@@ -6,7 +6,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params;
     const auctionId = parseInt(id);
     const body = await request.json();
-    const { title, description, startingPrice, currentPrice, minIncrement, endTime, tags, status } = body;
+    const { title, description, category, subCategory, startingPrice, currentPrice, minIncrement, endTime, tags, delivery, status } = body;
 
     const auction = await prisma.auction.findUnique({
       where: { id: auctionId },
@@ -26,9 +26,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const updateData: any = {
       title,
       description,
+      category: category || null,
+      subCategory: subCategory || null,
       minIncrement,
       endTime: new Date(endTime),
       tags,
+      delivery: delivery || "Not Available",
       status,
     };
 

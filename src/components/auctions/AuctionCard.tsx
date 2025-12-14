@@ -2,8 +2,8 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Gavel, Clock, Users } from "lucide-react";
-import Image from "next/image";
+import { Gavel, Users, MapPin } from "lucide-react";
+import { CldImage } from "next-cloudinary"; // 👈 Import this!
 import { useState, useEffect } from "react";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import FavoriteButton from "@/components/auctions/FavoriteButton";
@@ -15,7 +15,7 @@ interface AuctionCardProps {
   slug?: string;
   title: string;
   description: string;
-  imageUrl?: string;
+  imageUrl?: string; // This should be the Cloudinary Public ID now
   currentPrice: number;
   startingPrice: number;
   endTime: Date | string;
@@ -26,19 +26,23 @@ interface AuctionCardProps {
     kycStatus?: string;
   };
   bidsCount?: number;
+  locationArea?: string;
+  locationCity?: string;
 }
 
-export default function AuctionCard({ 
-  id, 
+export default function AuctionCard({
+  id,
   slug,
-  title, 
+  title,
   description,
   imageUrl,
-  currentPrice, 
+  currentPrice,
   startingPrice,
   endTime,
   seller,
-  bidsCount = 0
+  bidsCount = 0,
+  locationArea,
+  locationCity,
 }: AuctionCardProps) {
   const [sellerKyc, setSellerKyc] = useState<string | null>(null);
 
@@ -46,14 +50,13 @@ export default function AuctionCard({
     if (seller.kycStatus) {
       setSellerKyc(seller.kycStatus);
     } else if (seller.id) {
-      // Fetch seller KYC status from API if not provided
       fetch(`/api/users/${seller.id}`)
         .then((res) => res.json())
         .then((data) => {
           setSellerKyc(data.user?.kycStatus || null);
         })
         .catch(() => {
-          // Silent fail
+          /* Silent fail */
         });
     }
   }, [seller]);
@@ -63,10 +66,11 @@ export default function AuctionCard({
   const timeRemaining = endDate.getTime() - now.getTime();
   const isExpired = timeRemaining <= 0;
   const hoursLeft = Math.floor(timeRemaining / (1000 * 60 * 60));
-  const minutesLeft = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+  const minutesLeft = Math.floor(
+    (timeRemaining % (1000 * 60 * 60)) / (1000 * 60)
+  );
   const isEnding = hoursLeft < 1;
 
-  // Use slug for URL if available, fallback to id
   const auctionUrl = slug ? `/auctions/${slug}` : `/auctions/${id}`;
 
   return (
@@ -78,11 +82,14 @@ export default function AuctionCard({
         {/* Image Container */}
         <div className="relative h-48 w-full overflow-hidden bg-linear-to-br from-gray-800 to-gray-900">
           {imageUrl ? (
-            <Image
-              src={imageUrl}
+            <CldImage
+              src={imageUrl} // Pass the Public ID here
               alt={title}
               fill
               className="object-cover group-hover:scale-110 transition-transform duration-300"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              crop="fill" // 👈 Ensures the image fills the area without distortion
+              gravity="auto" // 👈 Smartly focuses on the most interesting part of the image
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-purple-900/20 to-blue-900/20">
@@ -91,18 +98,20 @@ export default function AuctionCard({
           )}
 
           {/* Status Badge */}
-          <div className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-md border ${
-            isExpired
-              ? 'bg-gray-500/80 border-gray-400 text-white'
-              : isEnding 
-              ? 'bg-red-500/80 border-red-400 text-white' 
-              : 'bg-black/50 border-white/10 text-white'
-          }`}>
-            {isExpired ? 'Expired' : `${hoursLeft}h ${minutesLeft}m`}
+          <div
+            className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-md border ${
+              isExpired
+                ? "bg-gray-500/80 border-gray-400 text-white"
+                : isEnding
+                ? "bg-red-500/80 border-red-400 text-white"
+                : "bg-black/50 border-white/10 text-white"
+            }`}
+          >
+            {isExpired ? "Expired" : `${hoursLeft}h ${minutesLeft}m`}
           </div>
 
           {/* Overlay with Action Buttons */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             whileHover={{ opacity: 1 }}
             transition={{ duration: 0.2 }}
@@ -113,7 +122,6 @@ export default function AuctionCard({
             <ReportButton auctionId={id} />
           </motion.div>
 
-          {/* Overlay on hover */}
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
         </div>
 
@@ -126,6 +134,13 @@ export default function AuctionCard({
             <p className="text-xs text-gray-400 line-clamp-2 mt-1">
               {description}
             </p>
+            {(locationArea || locationCity) && (
+              <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                <MapPin size={12} />
+                {locationArea || "Unknown Area"}
+                {locationCity && <span>, {locationCity}</span>}
+              </p>
+            )}
           </div>
 
           {/* Stats Row */}
@@ -137,22 +152,32 @@ export default function AuctionCard({
             <div className="flex-1 text-right flex items-center justify-end gap-2">
               <span className="text-nepal-accent font-bold flex items-center gap-3">
                 <span>{formatSellerName(seller.name, seller.email)}</span>
-                {/* show compact pill on listing for verified sellers */}
-                <VerifiedBadge isVerified={sellerKyc === 'VERIFIED'} size="sm" variant="pill" />
+                <VerifiedBadge
+                  isVerified={sellerKyc === "VERIFIED"}
+                  size="sm"
+                  variant="pill"
+                />
               </span>
             </div>
           </div>
 
           {/* Price Section */}
           <div className="mt-3 pt-3 border-t border-white/10">
-            <p className="text-xs text-gray-400 uppercase tracking-wider">Current Bid</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wider">
+              Current Bid
+            </p>
             <div className="flex justify-between items-baseline">
               <p className="text-xl font-bold text-white">
-                Rs. {currentPrice.toLocaleString('en-IN')}
+                Rs. {currentPrice.toLocaleString("en-IN")}
               </p>
               {currentPrice > startingPrice && (
                 <p className="text-xs text-green-400">
-                  +{((currentPrice - startingPrice) / startingPrice * 100).toFixed(0)}%
+                  +
+                  {(
+                    ((currentPrice - startingPrice) / startingPrice) *
+                    100
+                  ).toFixed(0)}
+                  %
                 </p>
               )}
             </div>

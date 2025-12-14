@@ -70,7 +70,7 @@ export async function compressImageFile(
   file: File,
   maxWidth: number = 2000,
   maxHeight: number = 2000,
-  quality: number = 0.8
+  quality: number = 0.6
 ): Promise<File> {
   const { blob, filename } = await compressImage(file, quality);
 

@@ -48,6 +48,17 @@ export async function GET(req: NextRequest) {
       orderBy: { kycSubmittedAt: 'desc' },
     });
 
+    // Log to identify any null or empty publicIds
+    submissions.forEach((sub: any) => {
+      if (!sub.citizenshipFront || !sub.citizenshipBack || !sub.selfieWithCitizenship) {
+        console.warn(`User ${sub.id} has missing KYC documents:`, {
+          citizenshipFront: sub.citizenshipFront || 'NULL',
+          citizenshipBack: sub.citizenshipBack || 'NULL',
+          selfieWithCitizenship: sub.selfieWithCitizenship || 'NULL',
+        });
+      }
+    });
+
     return NextResponse.json(submissions);
   } catch (err) {
     console.error('Error fetching KYC submissions:', err);

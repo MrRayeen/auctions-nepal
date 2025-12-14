@@ -1,13 +1,22 @@
 "use client";
 
+import dynamic from "next/dynamic";
+
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Plus, X, Upload, GripVertical, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, X, Upload, GripVertical, Trash2, MapPin } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { compressImageFile, formatFileSize } from "@/lib/imageCompressor";
 import { AUCTION_CONSTANTS } from "@/lib/constants";
+
+const LocationPickerMap = dynamic(
+  () => import("@/components/auctions/LocationPickerMap"),
+  { ssr: false }
+);
+
+import type { LocationData } from "@/components/auctions/LocationPickerMap";
 
 interface Tag {
   key: string;
@@ -44,7 +53,13 @@ export default function CreateAuctionPage() {
     endTime: "",
     category: "",
     subCategory: "",
+    locationLat: 0,
+    locationLng: 0,
+    locationArea: "",
+    locationCity: "",
+    delivery: "Not Available",
   });
+  const [location, setLocation] = useState<LocationData | null>(null);
 
   // Extract user ID from token on mount
   useEffect(() => {
@@ -63,7 +78,7 @@ export default function CreateAuctionPage() {
     }
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -175,6 +190,17 @@ export default function CreateAuctionPage() {
     setTags(tags.filter((_, i) => i !== index));
   };
 
+  const handleLocationChange = (locationData: LocationData) => {
+    setLocation(locationData);
+    setFormData(prev => ({
+      ...prev,
+      locationLat: locationData.lat,
+      locationLng: locationData.lng,
+      locationArea: locationData.area,
+      locationCity: locationData.city,
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -230,6 +256,11 @@ export default function CreateAuctionPage() {
         endTime: new Date(formData.endTime),
         tags: JSON.stringify(tagsObject),
         imageUrl: imageUrls[0], // Set first image as main
+        locationLat: formData.locationLat,
+        locationLng: formData.locationLng,
+        locationArea: formData.locationArea,
+        locationCity: formData.locationCity,
+        delivery: formData.delivery,
         images: imageUrls.map((url: string, index: number) => ({
           url,
           order: index,
@@ -268,7 +299,7 @@ export default function CreateAuctionPage() {
             animate={{ opacity: 1, y: 0 }}
             className="text-center space-y-6 max-w-md mx-auto px-4"
           >
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-nepal-accent to-purple-500 mx-auto flex items-center justify-center">
+            <div className="w-24 h-24 rounded-full bg-linear-to-br from-nepal-accent to-purple-500 mx-auto flex items-center justify-center">
               <Upload size={48} className="text-white" />
             </div>
             <div>
@@ -462,6 +493,41 @@ export default function CreateAuctionPage() {
                   required
                   className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-nepal-accent resize-none"
                 />
+              </div>
+
+              {/* Location Picker */}
+              <div>
+                <label className="text-sm font-bold text-gray-300 mb-2 flex items-center gap-2">
+                  <MapPin size={16} />
+                  Item Location (Optional)
+                </label>
+                <LocationPickerMap onLocationSelect={handleLocationChange} />
+                {location && (
+                  <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/20">
+                    <p className="text-sm text-gray-300">
+                      <span className="font-bold">{location.area || "Unknown Area"}</span>
+                      {location.city && <span>, {location.city}</span>}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Coordinates: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Delivery Option */}
+              <div>
+                <label className="block text-sm font-bold text-gray-300 mb-2">Delivery Option</label>
+                <select
+                  name="delivery"
+                  value={formData.delivery}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-nepal-accent"
+                >
+                  <option value="Not Available">Not Available</option>
+                  <option value="Only in my City">Only in my City</option>
+                  <option value="Paid Delivery">Paid Delivery</option>
+                </select>
               </div>
 
               {/* Price and End Time */}

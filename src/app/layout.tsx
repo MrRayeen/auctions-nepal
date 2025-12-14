@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ClientWrapper from "@/components/shared/ClientWrapper";
 import { ThemeProvider } from "@/context/ThemeContext";
+import "leaflet/dist/leaflet.css"
+
 
 // src/app/layout.tsx
 
